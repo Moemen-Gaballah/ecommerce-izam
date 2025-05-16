@@ -1,0 +1,3 @@
+# release note
+
+php artisan db:seed

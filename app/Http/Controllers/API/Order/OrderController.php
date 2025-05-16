@@ -1,36 +1,26 @@
 <?php
 
-namespace App\Http\Controllers\API;
+namespace App\Http\Controllers\API\Order;
 
+use App\Events\OrderPlaced;
+use App\Http\Controllers\API\Validator;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Requests\Api\Order\StoreOrderRequest;
 use App\Models\Order;
 use App\Models\Product;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Events\OrderPlaced;
 
 class OrderController extends Controller
 {
-    public function store(Request $request)
+    public function store(StoreOrderRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'products' => 'required|array|min:1',
-            'products.*.id' => 'required|exists:products,id',
-            'products.*.quantity' => 'required|integer|min:1',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $validated = $validator->validated();
-
         DB::beginTransaction();
 
         try {
             $order = Order::create();
 
-            foreach ($validated['products'] as $item) {
+            foreach ($request->products as $item) {
                 $product = Product::findOrFail($item['id']);
 
                 if ($product->stock < $item['quantity']) {
