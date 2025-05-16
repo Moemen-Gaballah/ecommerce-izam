@@ -13,12 +13,37 @@ use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
+    public function index($id)
+    {
+        $order = Order::where('user_id', auth()->id())->with('products')->paginate(10);
+
+        $total = $order->products->sum(function ($product) {
+            return $product->pivot->quantity * $product->price;
+        });
+
+        return response()->json([ // TODO Make Resource And use trait for response
+            'id' => $order->id,
+            'created_at' => $order->created_at,
+            'products' => $order->products->map(function ($product) {
+                return [
+                    'name' => $product->name,
+                    'price' => $product->price,
+                    'quantity' => $product->pivot->quantity,
+                    'subtotal' => $product->pivot->quantity * $product->price,
+                ];
+            }),
+            'total' => $total
+        ]);
+    }
+
     public function store(StoreOrderRequest $request)
     {
         DB::beginTransaction();
 
         try {
-            $order = Order::create();
+            $order = Order::create([
+                'user_id' => auth()->id()
+            ]);
 
             foreach ($request->products as $item) {
                 $product = Product::findOrFail($item['id']);
@@ -45,7 +70,7 @@ class OrderController extends Controller
 
     public function show($id)
     {
-        $order = Order::with('products')->findOrFail($id);
+        $order = Order::where('user_id', auth()->id())->with('products')->findOrFail($id);
 
         $total = $order->products->sum(function ($product) {
             return $product->pivot->quantity * $product->price;
@@ -65,4 +90,6 @@ class OrderController extends Controller
             'total' => $total
         ]);
     }
+
+
 }

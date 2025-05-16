@@ -18,6 +18,7 @@ class ProductController extends Controller
         $products = Cache::remember($key, 60, function () use ($request) {
             $query = Product::query();
 
+            // TODO Refactor
             if ($request->filled('name')) {
                 $query->where('name', 'like', '%' . $request->name . '%');
             }
