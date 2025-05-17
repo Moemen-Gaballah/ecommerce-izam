@@ -6,6 +6,7 @@ use App\Events\OrderPlaced;
 use App\Http\Controllers\API\Validator;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Order\StoreOrderRequest;
+use App\Http\Resources\Orders\OrderResource;
 use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Http\Request;
@@ -13,27 +14,11 @@ use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
-    public function index($id)
+    public function index()
     {
-        $order = Order::where('user_id', auth()->id())->with('products')->paginate(10);
+        $orders = Order::where('user_id', auth()->id())->get(); // TODO Paginate
 
-        $total = $order->products->sum(function ($product) {
-            return $product->pivot->quantity * $product->price;
-        });
-
-        return response()->json([ // TODO Make Resource And use trait for response
-            'id' => $order->id,
-            'created_at' => $order->created_at,
-            'products' => $order->products->map(function ($product) {
-                return [
-                    'name' => $product->name,
-                    'price' => $product->price,
-                    'quantity' => $product->pivot->quantity,
-                    'subtotal' => $product->pivot->quantity * $product->price,
-                ];
-            }),
-            'total' => $total
-        ]);
+        return response()->json(OrderResource::collection($orders));
     }
 
     public function store(StoreOrderRequest $request)
@@ -54,7 +39,7 @@ class OrderController extends Controller
 
                 $product->decrement('stock', $item['quantity']);
 
-                $order->products()->attach($product->id, ['quantity' => $item['quantity']]);
+                $order->products()->attach($product->id, ['quantity' => $item['quantity']]); // Todo store price and total ...
             }
 
             DB::commit();
